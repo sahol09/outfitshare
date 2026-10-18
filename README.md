@@ -156,3 +156,6 @@ The project is currently under active development and continues to evolve with n
 ## 📄 License
 
 This project is developed for educational purposes.
+
+---
+*Shared as a portfolio piece after marking. Please do not reuse this work in your own assessed coursework.*
