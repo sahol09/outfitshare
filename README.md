@@ -1,19 +1,44 @@
-# OutfitShare  
-A Community-Driven Clothing Sharing Platform
+# OutfitShare: Community Clothing-Sharing Platform
 
----
+A full-stack web app where students and local residents **lend and borrow outfits** for interviews, formal events and
+special occasions, cutting clothing waste and cost. Built by a four-person team over four agile sprints.
 
-## 🌍 Overview
+**Module:** CMPN204 Software Engineering, Year 2 (Spring 2026), University of Roehampton. **Group project mark: 74% (First)**  
+**Team TriCode Labs:** S M Saiem Talha (team lead), **Farhan Ahmed Sahol (Requirements & System Design Lead)**,
+Yash Chauhan (UI/UX), Enric Landes (UML & documentation). Original team repo: [saiemtalhaa1/TriCode_Labs](https://github.com/saiemtalhaa1/TriCode_Labs)
 
-OutfitShare is a dynamic web application designed to support sustainable fashion and community collaboration. The platform enables users to lend and borrow outfits within a trusted network, reducing clothing waste and lowering costs for special occasions and everyday needs.
+**Stack:** Node.js · Express · Pug · MySQL 8 · Docker / Docker Compose · bcrypt · express-session · multer · phpMyAdmin
 
-Instead of purchasing new clothing for one-time use, users can share outfits through a structured and transparent borrowing system.
+## My contribution
+- Wrote the full Sprint 3 build in [`sprint3/`](sprint3): the Express app (~1,200 lines), 25 Pug views, the MySQL schema and seed data, and the Docker setup
+- Authentication (bcrypt, sessions), profiles with image upload, listings with search, filters and **"Match My Size"**
+- Borrowing workflow: date-validated requests, double-booking prevention, borrower and lender dashboards
+- Reward points and listing boosts, notifications inbox, **admin panel** (stats, suspend users, moderate listings and reviews)
+- Sprint 1 documents: [code of conduct](docs/code-of-conduct.md) and [ethics](docs/ethical-issues.md)
 
-OutfitShare promotes:
-- Sustainability
-- Affordability
-- Community engagement
-- Trust and accountability
+## Run it
+```bash
+cd sprint3
+docker compose up --build
+```
+- App: http://localhost:3000 · phpMyAdmin: http://localhost:8080
+- Demo logins (seed data, password `password123`): `jane@example.com` (admin), `alex@example.com`, `priya@example.com`
+
+## Repository layout
+| Path | Contents |
+|---|---|
+| [`sprint3/`](sprint3) | Full application (the version described here) |
+| [`pg-sd2/`](pg-sd2) | Simpler course-template version used for the required Sprint 3 pages |
+| [`docs/`](docs) | Project description and MVP scope, personas, meeting minutes, code of conduct, ethics |
+
+## Fixes after submission (Oct 2026)
+Testing the full build against a live database found and fixed:
+- **Double booking:** two overlapping *pending* requests could both be approved. Approval now re-checks for clashes
+- **Reward points exploit:** re-sending "confirm return" awarded points every time. It now only completes an active loan, once
+- Completed or rejected requests could be re-approved. Approve and reject now only act on pending requests
+- Borrow requests accepted end dates before start dates and dates in the past
+- Seed passwords were stored in plain text, with a plain-text login fallback. They are now bcrypt-hashed, and the fallback has been removed
+- The session secret was hard-coded. It now comes from `SESSION_SECRET`, and the session id is regenerated on login
 
 ---
 
