@@ -5,6 +5,10 @@ block content
     .container
       h1.page-title Lending Dashboard
       p.page-subtitle Manage incoming requests and active lends.
+      if lendError === 'clash'
+        .alert.alert-error That request overlaps a booking you have already approved, so it was not approved.
+      if lendError === 'fail'
+        .alert.alert-error Something went wrong. Please try again.
 
       .dashboard-grid.dashboard-3col
         //- Incoming Requests

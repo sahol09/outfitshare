@@ -83,6 +83,8 @@ block content
           else if currentUser && currentUser.user_id !== listing.owner_user_id
             .borrow-form-section
               h3 Request to #{listing.listing_type === 'Giveaway' ? 'Claim' : 'Borrow'}
+              if borrowError === 'invalid'
+                .alert.alert-error Please choose a valid start and end date. The start cannot be in the past or after the end date.
               if borrowError === 'dates'
                 .alert.alert-error Your requested dates fall outside the listing's availability period. Please choose dates within the available range shown above.
               if borrowError === 'overlap'

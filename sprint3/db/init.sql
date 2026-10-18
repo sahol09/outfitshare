@@ -148,15 +148,16 @@ CREATE TABLE IF NOT EXISTS notifications (
 -- =====================
 
 -- Insert Users
+-- Demo accounts: every seed user's password is 'password123' (stored as a bcrypt hash)
 INSERT INTO users (name, email, password, height, weight, age, clothing_size, borrow_rating, lend_rating, reward_points, profile_completed, bio, location, profile_image, role) VALUES
-('Jane Doe', 'jane@example.com', 'password123', 165.0, 58.0, 24, 'M', 4.5, 4.8, 120, TRUE, 'Fashion lover in London. I love sharing and discovering new styles!', 'London', 'https://randomuser.me/api/portraits/women/44.jpg', 'admin'),
-('Alex Smith', 'alex@example.com', 'password123', 178.0, 75.0, 28, 'L', 4.2, 4.6, 85, TRUE, 'Sustainable fashion enthusiast. Sharing is caring!', 'Manchester', 'https://randomuser.me/api/portraits/men/32.jpg', 'user'),
-('Priya Patel', 'priya@example.com', 'password123', 160.0, 55.0, 22, 'S', 4.8, 4.9, 200, TRUE, 'Student who loves dressing up for events without breaking the bank.', 'London', 'https://randomuser.me/api/portraits/women/68.jpg', 'user'),
-('Tom Wilson', 'tom@example.com', 'password123', 182.0, 80.0, 30, 'XL', 3.9, 4.3, 50, TRUE, 'Community-minded guy who believes in reducing waste.', 'Birmingham', 'https://randomuser.me/api/portraits/men/75.jpg', 'user'),
-('Mia Chen', 'mia@example.com', 'password123', 168.0, 62.0, 26, 'M', 4.7, 4.5, 150, TRUE, 'Designer with a passion for circular fashion.', 'Bristol', 'https://randomuser.me/api/portraits/women/26.jpg', 'user'),
-('Sam Johnson', 'sam@example.com', 'password123', NULL, NULL, NULL, NULL, 0.0, 0.0, 0, FALSE, NULL, 'Leeds', NULL, 'user'),
-('Olivia Brown', 'olivia@example.com', 'password123', 170.0, 65.0, 25, 'M', 4.3, 4.7, 95, TRUE, 'Event planner always looking for the perfect outfit.', 'London', 'https://randomuser.me/api/portraits/women/90.jpg', 'user'),
-('Raj Kumar', 'raj@example.com', 'password123', 175.0, 72.0, 27, 'L', 4.1, 4.4, 70, TRUE, 'Believes fashion should be accessible to everyone.', 'Edinburgh', 'https://randomuser.me/api/portraits/men/46.jpg', 'user');
+('Jane Doe', 'jane@example.com', '$2a$10$2yQ/710IHjOp7tSXcRWwIeHZHxcjBResYwUvi/XXtylJU2GgOO8s2', 165.0, 58.0, 24, 'M', 4.5, 4.8, 120, TRUE, 'Fashion lover in London. I love sharing and discovering new styles!', 'London', 'https://randomuser.me/api/portraits/women/44.jpg', 'admin'),
+('Alex Smith', 'alex@example.com', '$2a$10$2yQ/710IHjOp7tSXcRWwIeHZHxcjBResYwUvi/XXtylJU2GgOO8s2', 178.0, 75.0, 28, 'L', 4.2, 4.6, 85, TRUE, 'Sustainable fashion enthusiast. Sharing is caring!', 'Manchester', 'https://randomuser.me/api/portraits/men/32.jpg', 'user'),
+('Priya Patel', 'priya@example.com', '$2a$10$2yQ/710IHjOp7tSXcRWwIeHZHxcjBResYwUvi/XXtylJU2GgOO8s2', 160.0, 55.0, 22, 'S', 4.8, 4.9, 200, TRUE, 'Student who loves dressing up for events without breaking the bank.', 'London', 'https://randomuser.me/api/portraits/women/68.jpg', 'user'),
+('Tom Wilson', 'tom@example.com', '$2a$10$2yQ/710IHjOp7tSXcRWwIeHZHxcjBResYwUvi/XXtylJU2GgOO8s2', 182.0, 80.0, 30, 'XL', 3.9, 4.3, 50, TRUE, 'Community-minded guy who believes in reducing waste.', 'Birmingham', 'https://randomuser.me/api/portraits/men/75.jpg', 'user'),
+('Mia Chen', 'mia@example.com', '$2a$10$2yQ/710IHjOp7tSXcRWwIeHZHxcjBResYwUvi/XXtylJU2GgOO8s2', 168.0, 62.0, 26, 'M', 4.7, 4.5, 150, TRUE, 'Designer with a passion for circular fashion.', 'Bristol', 'https://randomuser.me/api/portraits/women/26.jpg', 'user'),
+('Sam Johnson', 'sam@example.com', '$2a$10$2yQ/710IHjOp7tSXcRWwIeHZHxcjBResYwUvi/XXtylJU2GgOO8s2', NULL, NULL, NULL, NULL, 0.0, 0.0, 0, FALSE, NULL, 'Leeds', NULL, 'user'),
+('Olivia Brown', 'olivia@example.com', '$2a$10$2yQ/710IHjOp7tSXcRWwIeHZHxcjBResYwUvi/XXtylJU2GgOO8s2', 170.0, 65.0, 25, 'M', 4.3, 4.7, 95, TRUE, 'Event planner always looking for the perfect outfit.', 'London', 'https://randomuser.me/api/portraits/women/90.jpg', 'user'),
+('Raj Kumar', 'raj@example.com', '$2a$10$2yQ/710IHjOp7tSXcRWwIeHZHxcjBResYwUvi/XXtylJU2GgOO8s2', 175.0, 72.0, 27, 'L', 4.1, 4.4, 70, TRUE, 'Believes fashion should be accessible to everyone.', 'Edinburgh', 'https://randomuser.me/api/portraits/men/46.jpg', 'user');
 
 -- Insert Admin
 INSERT INTO admins (name, email, password) VALUES

@@ -31,6 +31,8 @@ services:
       DB_USER: outfitshare_user
       DB_PASSWORD: outfitshare_pass
       DB_NAME: outfitshare
+      # Change this for any real deployment; used to sign session cookies
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-local-dev-only}
     depends_on:
       db:
         condition: service_healthy

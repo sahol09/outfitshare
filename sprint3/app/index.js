@@ -42,11 +42,17 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(express.urlencoded({ extended: true }));
 
 // Session middleware
+// The session secret comes from the environment so it is never committed to Git.
+// If it is missing (local experiments), a random one is generated per start-up.
+const SESSION_SECRET = process.env.SESSION_SECRET || require("crypto").randomBytes(32).toString("hex");
+if (!process.env.SESSION_SECRET) {
+  console.warn("SESSION_SECRET not set - using a random secret (sessions reset on restart).");
+}
 app.use(session({
-  secret: "outfitshare-secret-key-2026",
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 24 * 60 * 60 * 1000 } // 24 hours
+  cookie: { maxAge: 24 * 60 * 60 * 1000, httpOnly: true, sameSite: "lax" } // 24 hours
 }));
 
 // Make session user available to all templates + notification count
@@ -165,20 +171,23 @@ app.post("/login", async (req, res) => {
     }
 
     const user = users[0];
-    // Support both bcrypt hashed and plain text passwords (for seed data)
-    let validPassword = false;
-    if (user.password.startsWith("$2")) {
-      validPassword = await bcrypt.compare(password, user.password);
-    } else {
-      validPassword = (password === user.password);
-    }
+    // Passwords are always stored as bcrypt hashes (including seed data),
+    // so plain-text comparison is never used.
+    const validPassword = await bcrypt.compare(password, user.password);
 
     if (!validPassword) {
       return res.render("login", { title: "Login - OutfitShare", error: "Invalid email or password." });
     }
 
-    req.session.user = { user_id: user.user_id, name: user.name, email: user.email, role: user.role || 'user', profile_image: user.profile_image || null };
-    res.redirect("/");
+    // Issue a fresh session id on login to prevent session fixation
+    req.session.regenerate((regenErr) => {
+      if (regenErr) {
+        console.error("Session regenerate error:", regenErr);
+        return res.render("login", { title: "Login - OutfitShare", error: "Login failed. Please try again." });
+      }
+      req.session.user = { user_id: user.user_id, name: user.name, email: user.email, role: user.role || 'user', profile_image: user.profile_image || null };
+      res.redirect("/");
+    });
   } catch (err) {
     console.error("Login error:", err);
     res.render("login", { title: "Login - OutfitShare", error: "Login failed. Please try again." });
@@ -516,6 +525,16 @@ app.post("/borrow/:id", requireLogin, async (req, res) => {
     const userId = req.session.user.user_id;
     const { start_date, end_date } = req.body;
 
+    // Validate the dates: both present, real dates, start not after end, not in the past
+    const isoDate = /^\d{4}-\d{2}-\d{2}$/;
+    const start = new Date(start_date);
+    const end = new Date(end_date);
+    const today = new Date(new Date().toISOString().slice(0, 10));
+    if (!isoDate.test(start_date || "") || !isoDate.test(end_date || "") ||
+        isNaN(start) || isNaN(end) || start > end || start < today) {
+      return res.redirect(`/listings/${listingId}?error=invalid`);
+    }
+
     // Check user isn't borrowing their own listing
     const [listing] = await db.query("SELECT owner_id FROM listings WHERE listing_id = ?", [listingId]);
     if (listing.length > 0 && listing[0].owner_id === userId) {
@@ -660,6 +679,7 @@ app.get("/dashboard/lend", requireLogin, async (req, res) => {
     res.render("dashboard-lend", {
       title: "Lending Dashboard - OutfitShare",
       incoming, activeLends, completedLends,
+      lendError: req.query.error || null,
     });
   } catch (err) {
     console.error("Lend dashboard error:", err);
@@ -669,31 +689,62 @@ app.get("/dashboard/lend", requireLogin, async (req, res) => {
 
 // Approve borrow request
 app.post("/lend/:id/approve", requireLogin, async (req, res) => {
-  const [request] = await db.query("SELECT br.*, l.owner_id FROM borrow_requests br JOIN listings l ON br.listing_id = l.listing_id WHERE br.request_id = ?", [req.params.id]);
-  if (request.length > 0 && request[0].owner_id === req.session.user.user_id) {
-    await db.query("UPDATE borrow_requests SET status = 'Approved' WHERE request_id = ?", [req.params.id]);
-    await db.query("INSERT INTO notifications (type, message, user_id) VALUES (?, ?, ?)",
-      ["Approval", "Your borrow request has been approved!", request[0].borrower_id]);
+  try {
+    const [request] = await db.query("SELECT br.*, l.owner_id FROM borrow_requests br JOIN listings l ON br.listing_id = l.listing_id WHERE br.request_id = ?", [req.params.id]);
+    // Only the owner can approve, and only while the request is still pending
+    if (request.length > 0 && request[0].owner_id === req.session.user.user_id && request[0].status === "Pending") {
+      const r = request[0];
+      // Re-check for clashes at approval time: two pending requests for the same
+      // dates must not both be approved (double booking)
+      const [clash] = await db.query(`
+        SELECT request_id FROM borrow_requests
+        WHERE listing_id = ? AND request_id <> ? AND status IN ('Approved', 'Active')
+          AND start_date <= ? AND end_date >= ?
+      `, [r.listing_id, r.request_id, r.end_date, r.start_date]);
+      if (clash.length > 0) {
+        return res.redirect("/dashboard/lend?error=clash");
+      }
+      await db.query("UPDATE borrow_requests SET status = 'Approved' WHERE request_id = ? AND status = 'Pending'", [r.request_id]);
+      await db.query("INSERT INTO notifications (type, message, user_id) VALUES (?, ?, ?)",
+        ["Approval", "Your borrow request has been approved!", r.borrower_id]);
+    }
+    res.redirect("/dashboard/lend");
+  } catch (err) {
+    console.error("Approve request error:", err);
+    res.redirect("/dashboard/lend?error=fail");
   }
-  res.redirect("/dashboard/lend");
 });
 
 // Reject borrow request
 app.post("/lend/:id/reject", requireLogin, async (req, res) => {
-  const [request] = await db.query("SELECT br.*, l.owner_id FROM borrow_requests br JOIN listings l ON br.listing_id = l.listing_id WHERE br.request_id = ?", [req.params.id]);
-  if (request.length > 0 && request[0].owner_id === req.session.user.user_id) {
-    await db.query("UPDATE borrow_requests SET status = 'Rejected' WHERE request_id = ?", [req.params.id]);
-    await db.query("INSERT INTO notifications (type, message, user_id) VALUES (?, ?, ?)",
-      ["Rejection", "Your borrow request has been declined.", request[0].borrower_id]);
+  try {
+    const [request] = await db.query("SELECT br.*, l.owner_id FROM borrow_requests br JOIN listings l ON br.listing_id = l.listing_id WHERE br.request_id = ?", [req.params.id]);
+    if (request.length > 0 && request[0].owner_id === req.session.user.user_id && request[0].status === "Pending") {
+      await db.query("UPDATE borrow_requests SET status = 'Rejected' WHERE request_id = ? AND status = 'Pending'", [req.params.id]);
+      await db.query("INSERT INTO notifications (type, message, user_id) VALUES (?, ?, ?)",
+        ["Rejection", "Your borrow request has been declined.", request[0].borrower_id]);
+    }
+    res.redirect("/dashboard/lend");
+  } catch (err) {
+    console.error("Reject request error:", err);
+    res.redirect("/dashboard/lend?error=fail");
   }
-  res.redirect("/dashboard/lend");
 });
 
 // Confirm return
 app.post("/lend/:id/return", requireLogin, async (req, res) => {
+  try {
   const [request] = await db.query("SELECT br.*, l.owner_id, l.listing_id FROM borrow_requests br JOIN listings l ON br.listing_id = l.listing_id WHERE br.request_id = ?", [req.params.id]);
   if (request.length > 0 && request[0].owner_id === req.session.user.user_id) {
-    await db.query("UPDATE borrow_requests SET status = 'Completed' WHERE request_id = ?", [req.params.id]);
+    // Only an approved/active loan can be completed, and only once. Checking
+    // affectedRows stops repeated POSTs from awarding reward points again.
+    const [update] = await db.query(
+      "UPDATE borrow_requests SET status = 'Completed' WHERE request_id = ? AND status IN ('Approved', 'Active')",
+      [req.params.id]
+    );
+    if (update.affectedRows === 0) {
+      return res.redirect("/dashboard/lend");
+    }
     // Record transaction
     await db.query("INSERT INTO transaction_history (status, borrower_id, lender_id, listing_id) VALUES (?, ?, ?, ?)",
       ["Completed", request[0].borrower_id, req.session.user.user_id, request[0].listing_id]);
@@ -704,6 +755,10 @@ app.post("/lend/:id/return", requireLogin, async (req, res) => {
     await db.query("INSERT INTO reward_transactions (type, points, user_id) VALUES (?, ?, ?)", ["Borrow Complete", 5, request[0].borrower_id]);
   }
   res.redirect("/dashboard/lend");
+  } catch (err) {
+    console.error("Confirm return error:", err);
+    res.redirect("/dashboard/lend?error=fail");
+  }
 });
 
 // =====================
@@ -969,12 +1024,7 @@ app.post("/settings/password", requireLogin, async (req, res) => {
     const user = users[0];
 
     // Verify current password
-    let validPassword = false;
-    if (user.password.startsWith("$2")) {
-      validPassword = await bcrypt.compare(current_password, user.password);
-    } else {
-      validPassword = (current_password === user.password);
-    }
+    const validPassword = await bcrypt.compare(current_password, user.password);
 
     if (!validPassword) {
       return res.render("settings", { title: "Settings - OutfitShare", user, error: "Current password is incorrect.", success: null });
